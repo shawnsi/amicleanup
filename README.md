@@ -24,3 +24,7 @@ $ python upload.py
 ## Scheduling
 
 Scheduled execution must be set up manually in the lambda console until boto3 adds support.
+
+## TODO
+
+This doesn't actually remove anything yet.  It just outputs a list of things that would be cleaned up.
