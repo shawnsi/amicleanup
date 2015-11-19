@@ -19,6 +19,20 @@ def get_images_in_use():
     return amis
 
 
+def get_snapshots(image_ids):
+    """
+    Returns snapshots associated with a list of AMIs.
+    """
+    snapshots = []
+
+    for snapshot in ec2.snapshots.all():
+        if snapshot.description.startswith('Created by CreateImage'):
+            for image_id in image_ids:
+                if snapshot.description.find('for %s from' % image_id) > 0:
+                    snapshots.append(snapshot.id)
+
+    return snapshots
+
 def get_orphaned_images():
     """
     Returns a list of image IDs meeting the following criteria:
@@ -36,13 +50,18 @@ def get_orphaned_images():
             creation_date = datetime.strptime(
                 image.creation_date, "%Y-%m-%dT%H:%M:%S.000Z")
 
-            if creation_date < (datetime.now() - timedelta(days=90)):
-                print('Pruning %s created on %s' % (image, creation_date))
+            if creation_date < (datetime.now() - timedelta(days=30)):
                 orphaned.append(image.image_id)
 
     return orphaned
 
 
 def lambda_handler(event, context):
+    """
+    Get all orphaned AMIs and EBS snapshots for cleanup.
+    """
     orphaned = get_orphaned_images()
-    return orphaned
+    snapshots = get_snapshots(orphaned)
+
+    print(orphaned)
+    print(snapshots)
