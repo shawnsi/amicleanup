@@ -5,21 +5,19 @@ from __future__ import print_function
 from datetime import datetime, timedelta
 import boto3
 
-ec2 = boto3.resource('ec2')
-
-def get_images_in_use():
+def get_images_in_use(ec2):
     """
     Returns a list of image IDs in use by any EC2 instance.
     """
-    amis = []
+    amis = set()
 
     for instance in ec2.instances.all():
-        amis.append(instance.image_id)
+        amis.add(instance.image_id)
 
     return amis
 
 
-def get_snapshots(image_ids):
+def get_snapshots(ec2, image_ids):
     """
     Returns snapshots associated with a list of AMIs.
     """
@@ -33,7 +31,8 @@ def get_snapshots(image_ids):
 
     return snapshots
 
-def get_orphaned_images():
+
+def get_orphaned_images(ec2):
     """
     Returns a list of image IDs meeting the following criteria:
 
@@ -41,14 +40,18 @@ def get_orphaned_images():
     * Not attached to any EC2 instance.
     * At least 30 days old.
     """
-    in_use = get_images_in_use()
+    in_use = get_images_in_use(ec2)
 
     orphaned = []
 
     for image in ec2.images.filter(Owners=['self']):
         if image.image_id not in in_use:
-            creation_date = datetime.strptime(
-                image.creation_date, "%Y-%m-%dT%H:%M:%S.000Z")
+            # Moto sets creation_date to None
+            if image.creation_date is None:
+                creation_date = datetime.fromtimestamp(0)
+            else:
+                creation_date = datetime.strptime(
+                    image.creation_date, "%Y-%m-%dT%H:%M:%S.000Z")
 
             if creation_date < (datetime.now() - timedelta(days=30)):
                 orphaned.append(image.image_id)
@@ -60,8 +63,10 @@ def lambda_handler(event, context):
     """
     Get all orphaned AMIs and EBS snapshots for cleanup.
     """
-    orphaned = get_orphaned_images()
-    snapshots = get_snapshots(orphaned)
+    ec2 = boto3.resource('ec2')
+
+    orphaned = get_orphaned_images(ec2)
+    snapshots = get_snapshots(ec2, orphaned)
 
     print(orphaned)
     print(snapshots)
