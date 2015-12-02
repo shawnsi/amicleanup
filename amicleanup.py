@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import boto3
 from botocore.exceptions import ClientError
 
+
 def get_images_in_use(ec2):
     """
     Returns a list of image IDs in use by any EC2 instance.
@@ -33,7 +34,7 @@ def get_snapshots(ec2, image_ids):
     return snapshots
 
 
-def get_orphaned_images(ec2, filters=None):
+def get_orphaned_images(ec2, filters=None, retention=30):
     """
     Returns a list of image IDs meeting the following criteria:
 
@@ -50,15 +51,15 @@ def get_orphaned_images(ec2, filters=None):
 
     for image in ec2.images.filter(Filters=filters, Owners=['self']):
         if image.image_id not in in_use:
-            # Moto doesn't currenlty provide a creation date.  Setting a default
-            # value here just for testing purposes.
+            # Moto doesn't currenlty provide a creation date.  Setting a
+            # default value here just for testing purposes.
             if image.creation_date is None:
                 creation_date = datetime.fromtimestamp(0)
             else:
                 creation_date = datetime.strptime(
                     image.creation_date, "%Y-%m-%dT%H:%M:%S.000Z")
 
-            if creation_date < (datetime.now() - timedelta(days=30)):
+            if creation_date < (datetime.now() - timedelta(days=retention)):
                 orphaned.append(image.image_id)
 
     return orphaned
@@ -75,9 +76,14 @@ def lambda_handler(event, context):
     if not 'Filters' in event:
         event['Filters'] = []
 
+    if not 'Retention' in event:
+        event['Retention'] = 30
+
     ec2 = boto3.resource('ec2')
 
-    orphaned = get_orphaned_images(ec2, filters=event['Filters'])
+    orphaned = get_orphaned_images(ec2, filters=event['Filters'],
+                                   retention=event['Retention'])
+
     snapshots = get_snapshots(ec2, orphaned)
 
     for orphan in orphaned:
