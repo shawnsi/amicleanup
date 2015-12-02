@@ -62,12 +62,23 @@ def get_orphaned_images(ec2):
 
 def lambda_handler(event, context):
     """
-    Get all orphaned AMIs and EBS snapshots for cleanup.
+    Cleanup orphaned AMIs and EBS snapshots.
     """
+
+    if not 'dryrun' in event:
+        event['dryrun'] = False
+
     ec2 = boto3.resource('ec2')
 
     orphaned = get_orphaned_images(ec2)
     snapshots = get_snapshots(ec2, orphaned)
 
-    print(orphaned)
-    print(snapshots)
+    for orphan in orphaned:
+        print('Deleting: %s' % orphan)
+        if not event['dryrun']:
+            orphan.deregister()
+
+    for snapshot in snapshots:
+        print('Deleting: %s' % snapshot)
+        if not event['dryrun']:
+            snapshot.delete()
