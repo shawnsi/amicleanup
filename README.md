@@ -1,4 +1,4 @@
-# ec2snapshot
+# amicleanup
 
 AWS Lambda function to cleanup orphaned AMIs and corresponding EBS snapshots.
 
