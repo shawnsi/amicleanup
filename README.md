@@ -58,6 +58,16 @@ The lambda function can be passed filters as runtime to restrict which EC2 AMIs 
 
 See [boto3 EC2 service resources](http://boto3.readthedocs.org/en/latest/reference/services/ec2.html#service-resource) for full documentation of the supported filters.
 
+### Retention
+
+By default only AMIs older than 30 days will be returned.  The retention period can be customized with the `Retention` attribute:
+
+```json
+{
+  "Retention": 60
+}
+```
+
 ## Scheduling
 
 Scheduled execution must be set up manually in the lambda console until boto3 adds support.
