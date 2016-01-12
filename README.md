@@ -35,13 +35,13 @@ A dry run can be executed by setting the `DryRun` attribute to `true`.
 
 ### Filters
 
-The lambda function can be passed filters as runtime to restrict which EC2 AMIs are affected:
+By default only images with the `ops:retention` tag set will be affected.  The lambda function can be passed filters at runtime to change which EC2 AMIs are affected:
 
 ```json
 {
   "filters": [
         {
-            "Name": "tag:Name",
+            "Name": "name",
             "Values": [
                 "*NFS*"
             ]
@@ -60,7 +60,7 @@ See [boto3 EC2 service resources](http://boto3.readthedocs.org/en/latest/referen
 
 ### Retention
 
-By default only AMIs older than 30 days will be returned.  The retention period can be customized with the `Retention` attribute:
+Image retention is looked up via the `ops:retention` tag if available.  Otherwise the retention is configurable at runtime via the `Retention` property.  It defaults to 30 (days):
 
 ```json
 {

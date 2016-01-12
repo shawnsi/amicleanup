@@ -34,13 +34,14 @@ def get_snapshots(ec2, image_ids):
     return snapshots
 
 
-def get_orphaned_images(ec2, filters=None, retention=30):
+def get_orphaned_images(ec2, filters, retention):
     """
     Returns a list of image IDs meeting the following criteria:
 
     * Owned by self.
     * Not attached to any EC2 instance.
-    * At least 30 days old.
+    * Older than retention specified in ops:retention tag.
+    * Older than default_retention if not specific in ops:retention.
     """
     if not filters:
         filters = []
@@ -59,6 +60,12 @@ def get_orphaned_images(ec2, filters=None, retention=30):
                 creation_date = datetime.strptime(
                     image.creation_date, "%Y-%m-%dT%H:%M:%S.000Z")
 
+            # If the retention is specified in a tag override the default
+            if image.tags:
+                for tag in image.tags:
+                    if tag['Key'] == 'ops:retention':
+                        retention = int(tag['Value'])
+
             if creation_date < (datetime.now() - timedelta(days=retention)):
                 orphaned.append(image.image_id)
 
@@ -74,7 +81,12 @@ def lambda_handler(event, context):
         event['DryRun'] = False
 
     if not 'Filters' in event:
-        event['Filters'] = []
+        event['Filters'] = [{
+            'Name': 'tag-key',
+            'Values': [
+                'ops:retention'
+            ]
+        }]
 
     if not 'Retention' in event:
         event['Retention'] = 30
@@ -97,7 +109,7 @@ def lambda_handler(event, context):
     for snapshot in snapshots:
         print('Deleting: %s' % snapshot)
         try:
-            ec2.Snapshot(snapshot).deregister(DryRun=event['DryRun'])
+            ec2.Snapshot(snapshot).delete(DryRun=event['DryRun'])
         except ClientError as e:
             if e.response['Error']['Code'] == 'DryRunOperation':
                 pass
