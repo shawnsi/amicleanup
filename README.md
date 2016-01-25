@@ -39,7 +39,7 @@ By default only images with the `ops:retention` tag set will be affected.  The l
 
 ```json
 {
-  "filters": [
+  "Filters": [
         {
             "Name": "name",
             "Values": [
